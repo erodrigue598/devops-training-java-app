@@ -125,7 +125,7 @@ stage('CD') {
       //  env.DEPLOY_ENV = 'DEV'
       //} else {
        // env.DEPLOY_ENV = 'PRO'
-   echo "Usando imagen: ${env.IMAGE_NAME}" 
+     echo "Usando imagen: ${env.IMAGE_NAME}" 
       sh "echo Aplicación disponible en: ${APP_URL}"   
       //echo "Entorno de despliegue: ${env.DEPLOY_ENV}"
 
@@ -140,6 +140,21 @@ stage('CD') {
         sh 'docker compose down --volumes'
       }
     }
+  }
+
+  post {
+    always {
+      echo "Limpieza de recursos..." 
+      sh 'docker compose down --volumes || true'
+      sh "docker rmi ${env.IMAGE_NAME} || true" 
+    } 
+    success {
+      echo 'SUCCESS' 
+    } 
+    failure { 
+      echo 'FAILURE'
+      sh 'docker compose logs app || true' 
+    } 
   }
 }
  
