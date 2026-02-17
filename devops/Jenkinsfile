@@ -80,7 +80,47 @@ pipeline {
         } 
       } 
     }
+// =========================
+// Ejercicio 6 (compose) + Ejercicio 6.1 (solo develop/master) + Ejercicio 6.3 (RUN_CD)
+// =========================
+stage('CD') {
+  when {
+    allOf {
+      anyOf {
+        branch 'develop'
+        branch 'master'
+      }
+      expression { return env.RUN_CD == 'true' }
+    }
+  }
 
+  steps {
+    script {
+
+      // =========================
+      // Ejercicio 6.2: DEPLOY_ENV
+      // =========================
+      if (env.BRANCH_NAME == 'develop') {
+        env.DEPLOY_ENV = 'DEV'
+      } else {
+        env.DEPLOY_ENV = 'PRO'
+      }
+      echo "Entorno de despliegue: ${env.DEPLOY_ENV}"
+
+      // =========================
+      // Ejercicio 6: compose up -> logs -> down
+      // =========================
+      try {
+        sh 'docker compose up -d'
+        sh 'sleep 5'
+        sh 'docker compose logs app'   // cambia "app" por tu servicio principal
+      } finally {
+        sh 'docker compose down --volumes'
+      }
+    }
+  }
+}
+ 
     
     stage('Test') {
       /*
