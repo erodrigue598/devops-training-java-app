@@ -120,7 +120,7 @@ stage('CD') {
       //  env.DEPLOY_ENV = 'DEV'
       //} else {
        // env.DEPLOY_ENV = 'PRO'
-      }
+      
       //echo "Entorno de despliegue: ${env.DEPLOY_ENV}"
 
       // =========================
