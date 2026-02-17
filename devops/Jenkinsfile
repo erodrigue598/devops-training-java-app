@@ -85,8 +85,9 @@ pipeline {
 // =========================
 stage('CD') {
   when {
-    allOf {
+  //  allOf {
       anyOf {
+        expression { return params.RUN_CD } // si RUN_CD=true
         branch 'develop'
         branch 'master'
       }
