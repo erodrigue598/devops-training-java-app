@@ -16,6 +16,19 @@ def runInDocker(String image, Closure body) {
 
 
 pipeline {
+// =========================
+  // Ejercicio 6.3 (parámetros)
+  // =========================
+   parameters {
+    booleanParam(
+      name: 'RUN_CD',
+      defaultValue: false,
+      description: 'Ejecutar CD manualmente'
+    )
+  }
+
+  agent any
+
   // `agent any` = el pipeline se ejecuta en cualquier nodo/agente disponible.
   agent any
 
@@ -101,12 +114,17 @@ stage('CD') {
       // =========================
       // Ejercicio 6.2: DEPLOY_ENV
       // =========================
-      if (env.BRANCH_NAME == 'develop') {
-        env.DEPLOY_ENV = 'DEV'
-      } else {
-        env.DEPLOY_ENV = 'PRO'
+    
+  env.DEPLOY_ENV = (env.BRANCH_NAME == 'master') ? 'PRO' : 'DEV'
+  echo "Deploying to ${env.DEPLOY_ENV}"
+}
+
+    //  if (env.BRANCH_NAME == 'develop') {
+      //  env.DEPLOY_ENV = 'DEV'
+      //} else {
+       // env.DEPLOY_ENV = 'PRO'
       }
-      echo "Entorno de despliegue: ${env.DEPLOY_ENV}"
+      //echo "Entorno de despliegue: ${env.DEPLOY_ENV}"
 
       // =========================
       // Ejercicio 6: compose up -> logs -> down
