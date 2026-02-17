@@ -11,6 +11,39 @@ pipeline {
   agent any
 
   stages {
+    // ========================= // Ejercicio 3: construir imagen CI con Dockerfile // ========================= 
+    stage('CI - Build tools image') { 
+    steps { script { 
+      // Construimos la imagen de CI desde devops/ci.Dockerfile 
+      env.CI_IMAGE_NAME = "java-ci-tools:${env.BUILD_NUMBER}" 
+      docker.build(env.CI_IMAGE_NAME, "-f devops/ci.Dockerfile .") 
+    } 
+          } 
+    } 
+    // ========================= // Ejercicio 3: Lint sin runInDocker // =========================
+    stage('CI - Lint') { 
+      agent { 
+        docker { 
+          image "${env.CI_IMAGE_NAME}" 
+          reuseNode true
+        } 
+      } 
+      steps {
+        sh 'make lint'
+      } 
+    }
+    // ========================= // Ejercicio 3: Test sin runInDocker // ========================= 
+    stage('CI - Test') { 
+      agent { 
+        docker { 
+          image "${env.CI_IMAGE_NAME}" 
+          reuseNode true 
+        } 
+      } 
+      steps { 
+        sh 'make test' 
+      }
+    }
     stage('Test') {
       /*
         `agent` dentro de un stage permite que SOLO ese stage se ejecute en un contexto concreto.
