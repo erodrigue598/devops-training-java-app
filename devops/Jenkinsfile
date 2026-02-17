@@ -27,6 +27,11 @@ pipeline {
     )
   }
 
+   environment {
+     IMAGE_NAME = "mi-imagen:${BUILD_NUMBER}"
+     APP_URL = "http://localhost:5001/" 
+   }
+
   // `agent any` = el pipeline se ejecuta en cualquier nodo/agente disponible.
   agent any
 
@@ -120,7 +125,8 @@ stage('CD') {
       //  env.DEPLOY_ENV = 'DEV'
       //} else {
        // env.DEPLOY_ENV = 'PRO'
-      
+   echo "Usando imagen: ${env.IMAGE_NAME}" 
+      sh "echo Aplicación disponible en: ${APP_URL}"   
       //echo "Entorno de despliegue: ${env.DEPLOY_ENV}"
 
       // =========================
