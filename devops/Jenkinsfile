@@ -27,5 +27,11 @@ pipeline {
         sh 'echo "Stage dummy. En la Practica 2 ejecutaras aqui los tests unitarios."'
       }
     }
+       stage('Info') {
+            steps { 
+                echo "Job: ${env.JOB_NAME}"
+                echo "Build ${env.BUILD_NUMBER}"
+            }
+        }
   }
 }
