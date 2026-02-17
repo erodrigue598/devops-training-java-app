@@ -68,6 +68,20 @@ pipeline {
          }
       }
     }
+ // ========================= 
+// Ejercicio 5: Build image final 
+// ========================= 
+    stage('Build image') { 
+      steps { 
+        script {
+          env.APP_IMAGE = "mi-app:${env.BUILD_NUMBER}" 
+          docker.build( 
+            env.APP_IMAGE, "--build-arg VERSION=${env.BUILD_NUMBER} -f devops/Dockerfile ." )
+        } 
+      } 
+    }
+
+    
     stage('Test') {
       /*
         `agent` dentro de un stage permite que SOLO ese stage se ejecute en un contexto concreto.
