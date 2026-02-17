@@ -91,9 +91,9 @@ stage('CD') {
         branch 'develop'
         branch 'master'
       }
-      expression { return env.RUN_CD == 'true' }
+  //    expression { return env.RUN_CD == 'true' }
     }
-  }
+
 
   steps {
     script {
