@@ -5,13 +5,24 @@
   piezas (stages, agents, funciones Groovy, Docker build, docker compose, etc.)
   hasta construir un pipeline CI/CD completo.
 */
+// ========================= 
+// Función reutilizable (Ejercicio 4) 
+// ========================= 
+def runInDocker(String image, Closure body) { 
+  docker.image(image).inside { 
+    body() 
+  } 
+}
+
 
 pipeline {
   // `agent any` = el pipeline se ejecuta en cualquier nodo/agente disponible.
   agent any
 
   stages {
-    // ========================= // Ejercicio 3: construir imagen CI con Dockerfile // ========================= 
+    // =========================
+    // Ejercicio 3: construir imagen CI con Dockerfile 
+    // ========================= 
     stage('CI - Build tools image') { 
     steps { script { 
       // Construimos la imagen de CI desde devops/ci.Dockerfile 
@@ -20,28 +31,41 @@ pipeline {
     } 
           } 
     } 
-    // ========================= // Ejercicio 3: Lint sin runInDocker // =========================
+    // ========================= 
+    //    Ejercicio 3: Lint sin runInDocker
+    // =========================
     stage('CI - Lint') { 
-      agent { 
-        docker { 
-          image "${env.CI_IMAGE_NAME}" 
-          reuseNode true
-        } 
-      } 
+    // agent { 
+       //docker { 
+      //    image "${env.CI_IMAGE_NAME}" 
+        //  reuseNode true
+        //  } 
+    //  } 
       steps {
-        sh 'make lint'
+        //sh 'make lint'
+       script {
+         runInDocker(env.CI_IMAGE_NAME) {
+           sh 'make lint' 
+         } 
+       }
       } 
     }
-    // ========================= // Ejercicio 3: Test sin runInDocker // ========================= 
+    // ========================= 
+    // Ejercicio 3: Test sin runInDocker 
+    // ========================= 
     stage('CI - Test') { 
-      agent { 
-        docker { 
-          image "${env.CI_IMAGE_NAME}" 
-          reuseNode true 
-        } 
-      } 
+     // agent { 
+      //  docker { 
+        //  image "${env.CI_IMAGE_NAME}" 
+        //  reuseNode true 
+     //   } 
+     // } 
       steps { 
+         script { 
+           runInDocker(env.CI_IMAGE_NAME) {
         sh 'make test' 
+           }
+         }
       }
     }
     stage('Test') {
