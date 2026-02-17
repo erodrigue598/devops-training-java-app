@@ -27,8 +27,6 @@ pipeline {
     )
   }
 
-  agent any
-
   // `agent any` = el pipeline se ejecuta en cualquier nodo/agente disponible.
   agent any
 
@@ -117,7 +115,6 @@ stage('CD') {
     
   env.DEPLOY_ENV = (env.BRANCH_NAME == 'master') ? 'PRO' : 'DEV'
   echo "Deploying to ${env.DEPLOY_ENV}"
-}
 
     //  if (env.BRANCH_NAME == 'develop') {
       //  env.DEPLOY_ENV = 'DEV'
