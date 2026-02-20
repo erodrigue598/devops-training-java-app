@@ -20,6 +20,15 @@ on:
           required: false 
           type: boolean 
           default: false
+          #
+       DEPLOY_ENV: 
+          description: "Entorno de despliegue"
+          type: choice 
+          required: false 
+          options: 
+            - DEV 
+            - PRO 
+          default: DEV
 # --------------------------- 
 # ENV A NIVEL DE WORKFLOW 
 # --------------------------- 
@@ -60,4 +69,9 @@ jobs:
           echo "APP_URL sobrescrita en job: $APP_URL" 
           echo "IMAGE_NAME via syntax: ${{ env.IMAGE_NAME }}" 
           echo "APP_URL via syntax: ${{ env.APP_URL }}"
+
+     - name: Mostrar inputs de workflow_dispatch 
+       run: | 
+          echo "RUN_CD: ${{ inputs.RUN_CD }}" 
+          echo "DEPLOY_ENV: ${{ inputs.DEPLOY_ENV }}"    
 
