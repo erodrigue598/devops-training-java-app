@@ -37,7 +37,7 @@ jobs:
           echo "Ref:  $GITHUB_REF"
           echo "Branch: $GITHUB_REF_NAME"
 
-ci: 
+ ci: 
   runs-on: ubuntu-latest 
 
   # --------------------------- 
@@ -46,7 +46,7 @@ ci:
   env:
      APP_URL: https://override-desde-job.com
       
-   steps: 
+  steps: 
     - name: Checkout
       uses: actions/checkout@v4 
     - name: Info 
