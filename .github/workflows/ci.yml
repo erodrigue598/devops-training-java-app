@@ -20,6 +20,12 @@ on:
           required: false 
           type: boolean 
           default: false
+# --------------------------- 
+# ENV A NIVEL DE WORKFLOW 
+# --------------------------- 
+env: 
+  IMAGE_NAME: my-app-image
+  APP_URL: https://miapp.com 
 
 jobs:
   dummy:
@@ -31,8 +37,15 @@ jobs:
           echo "Ref:  $GITHUB_REF"
           echo "Branch: $GITHUB_REF_NAME"
 
-  ci: 
-   runs-on: ubuntu-latest 
+ci: 
+  runs-on: ubuntu-latest 
+
+  # --------------------------- 
+  # ENV A NIVEL DE JOB (sobrescribe) 
+  # --------------------------- 
+  env:
+     APP_URL: https://override-desde-job.com
+      
    steps: 
     - name: Checkout
       uses: actions/checkout@v4 
@@ -42,4 +55,11 @@ jobs:
         echo "SHA: ${{ github.sha }}" 
         echo "Runner OS: ${{ runner.os }}" 
         echo "Runner name: ${{ runner.name }}"
+
+    - name: Mostrar variables env 
+      run: | 
+         echo "IMAGE_NAME desde workflow: $IMAGE_NAME" 
+         echo "APP_URL sobrescrita en job: $APP_URL" 
+         echo "IMAGE_NAME via syntax: ${{ env.IMAGE_NAME }}" 
+         echo "APP_URL via syntax: ${{ env.APP_URL }}"
 
