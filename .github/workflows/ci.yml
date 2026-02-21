@@ -77,8 +77,8 @@ jobs:
      - name: Build CI image 
        run: | 
          docker build -t ci-image \
-           -f devops/ci.Dockerfile \ 
-           --build-arg COPY_CODE=true . 
+         -f devops/ci.Dockerfile \ 
+         --build-arg COPY_CODE=true . 
      - name: Lint 
        run: docker run --rm ci-image make lint 
      - name: Test 
