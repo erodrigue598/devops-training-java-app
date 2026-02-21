@@ -76,6 +76,12 @@ jobs:
     # --------------------------- 
      - name: Debug 
        run: ls -R ${{ github.workspace }}
+
+     - name: Mostrar directorio actual
+       run: pwd
+     - name: Listar contenido del directorio actual
+       run: ls -la
+
      - name: Build CI image 
        run:  docker build -t ci-image -f devops/ci.Dockerfile $GITHUB_WORKSPACE
        working-directory: ${{ github.workspace }}
