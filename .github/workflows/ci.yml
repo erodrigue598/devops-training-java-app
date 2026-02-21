@@ -1,4 +1,4 @@
-# Práctica 3 - GitHub Actions (dummy)
+ # Práctica 3 - GitHub Actions (dummy)
 #
 # Punto de partida: workflow mínimo para validar que Actions funciona en el repo.
 # En la Práctica 3 irás ampliando este workflow para llegar a CI/CD.
@@ -70,6 +70,16 @@ jobs:
           echo "APP_URL sobrescrita en job: $APP_URL" 
           echo "IMAGE_NAME via syntax: ${{ env.IMAGE_NAME }}" 
           echo "APP_URL via syntax: ${{ env.APP_URL }}"
+          
+    # --------------------------- 
+    # DOCKER COMO AGENTE DE CI 
+    # --------------------------- 
+     - name: Build CI image 
+       run: docker build -t ci-image -f devops/ci.Dockerfile . 
+     - name: Lint 
+       run: docker run --rm ci-image make lint 
+     - name: Test 
+       run: docker run --rm ci-image make test 
 
      - name: Mostrar inputs de workflow_dispatch 
        run: | 
