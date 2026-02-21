@@ -74,6 +74,8 @@ jobs:
     # --------------------------- 
     # DOCKER COMO AGENTE DE CI 
     # --------------------------- 
+     - name: Debug 
+       run: ls -R ${{ github.workspace }}
      - name: Build CI image 
        run:  docker build -t ci-image -f devops/ci.Dockerfile $GITHUB_WORKSPACE
        working-directory: ${{ github.workspace }}
