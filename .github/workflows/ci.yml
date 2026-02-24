@@ -82,13 +82,26 @@ jobs:
      - name: Listar contenido del directorio actual
        run: ls -la
 
-     - name: Build CI image 
-       run:  docker build -t ci-image -f devops/ci.Dockerfile $GITHUB_WORKSPACE
-       working-directory: ${{ github.workspace }}
+  #   - name: Build CI image 
+       #run:  docker build -t ci-image -f devops/ci.Dockerfile $GITHUB_WORKSPACE
+    #   working-directory: ${{ github.workspace }}
+     - name: Build CI image con tag usado por docker-compose 
+       run: | 
+          docker build \
+             -t $IMAGE_NAME:latest \
+             -f devops/ci.Dockerfile . 
+          echo "Imagen construida: $IMAGE_NAME:latest"
+          
+
      - name: Lint 
-       run: docker run --rm ci-image make lint 
+     #  run: docker run --rm ci-image make lint 
+       run: docker run --rm $IMAGE_NAME:latest make lint
+
      - name: Test 
-       run: docker run --rm ci-image make test 
+    #   run: docker run --rm ci-image make test 
+    
+       run: docker run --rm $IMAGE_NAME:latest make test     
+
 
      - name: Mostrar inputs de workflow_dispatch 
        run: | 
@@ -101,3 +114,5 @@ jobs:
           # Los secrets no se imprimen por seguridad 
           echo "Usuario del registry: ${{ secrets.REGISTRY_USER }}" 
           # NO imprimas el password
+
+          
