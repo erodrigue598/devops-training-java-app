@@ -131,6 +131,26 @@ jobs:
           echo "=== CD ACTIVADO ===" 
           echo "Branch: ${{ github.ref_name }}" 
           echo "RUN_CD: ${{ inputs.RUN_CD }}" 
+
+
+
+ 
+     - name: Docker Compose UP 
+       run: | 
+          echo "Levantando servicios con docker compose..." 
+          docker compose -f docker-compose.yml up -d     
+     - name: Logs del contenedor principal 
+       run: | 
+           echo "=== LOGS DEL SERVICIO APP ===" 
+           docker compose -f docker-compose.yml logs app
+
+     - name: Cleanup (siempre) 
+       if: always() 
+       run: | 
+          echo "=== CLEANUP ===" 
+          docker compose -f docker-compose.yml down -v 
+          echo "Servicios eliminados"
+         
           echo "Desplegando en entorno: ${{ github.ref_name == 'master' && 'PRO' || 'DEV' }}" 
           echo "Imagen a desplegar: $IMAGE_NAME:latest"
 
