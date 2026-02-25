@@ -1,16 +1,164 @@
-/*
+/* 
   Practica 2 - Jenkinsfile dummy (PUNTO DE PARTIDA)
 
   Este Jenkinsfile es intencionalmente simple. En la Practica 2 iras anadiendo
   piezas (stages, agents, funciones Groovy, Docker build, docker compose, etc.)
   hasta construir un pipeline CI/CD completo.
 */
+// ========================= 
+// Función reutilizable (Ejercicio 4) 
+// ========================= 
+def runInDocker(String image, Closure body) { 
+  docker.image(image).inside { 
+    body() 
+  } 
+}
+
 
 pipeline {
+// =========================
+  // Ejercicio 6.3 (parámetros)
+  // =========================
+   parameters {
+    booleanParam(
+      name: 'RUN_CD',
+      defaultValue: false,
+      description: 'Ejecutar CD manualmente'
+    )
+  }
+
+   environment {
+     IMAGE_NAME = "mi-imagen:${BUILD_NUMBER}"
+     APP_URL = "http://localhost:5001/" 
+   }
+
   // `agent any` = el pipeline se ejecuta en cualquier nodo/agente disponible.
   agent any
 
   stages {
+    // =========================
+    // Ejercicio 3: construir imagen CI con Dockerfile 
+    // ========================= 
+    stage('CI - Build tools image') { 
+    steps { script { 
+      // Construimos la imagen de CI desde devops/ci.Dockerfile 
+      env.CI_IMAGE_NAME = "java-ci-tools:${env.BUILD_NUMBER}" 
+      docker.build(env.CI_IMAGE_NAME, "-f devops/ci.Dockerfile .") 
+    } 
+          } 
+    } 
+    // ========================= 
+    //    Ejercicio 3: Lint sin runInDocker
+    // =========================
+    stage('CI - Lint') { 
+    // agent { 
+       //docker { 
+      //    image "${env.CI_IMAGE_NAME}" 
+        //  reuseNode true
+        //  } 
+    //  } 
+      steps {
+        //sh 'make lint'
+       script {
+         runInDocker(env.CI_IMAGE_NAME) {
+           sh 'make lint' 
+         } 
+       }
+      } 
+    }
+    // ========================= 
+    // Ejercicio 3: Test sin runInDocker 
+    // ========================= 
+    stage('CI - Test') { 
+     // agent { 
+      //  docker { 
+        //  image "${env.CI_IMAGE_NAME}" 
+        //  reuseNode true 
+     //   } 
+     // } 
+      steps { 
+         script { 
+           runInDocker(env.CI_IMAGE_NAME) {
+        sh 'make test' 
+           }
+         }
+      }
+    }
+ // ========================= 
+// Ejercicio 5: Build image final 
+// ========================= 
+    stage('Build image') { 
+      steps { 
+        script {
+          env.APP_IMAGE = "mi-app:${env.BUILD_NUMBER}" 
+          docker.build( 
+            env.APP_IMAGE, "--build-arg VERSION=${env.BUILD_NUMBER} -f devops/Dockerfile ." )
+        } 
+      } 
+    }
+// =========================
+// Ejercicio 6 (compose) + Ejercicio 6.1 (solo develop/master) + Ejercicio 6.3 (RUN_CD)
+// =========================
+stage('CD') {
+  when {
+  //  allOf {
+      anyOf {
+        expression { return params.RUN_CD } // si RUN_CD=true
+        branch 'develop'
+        branch 'master'
+      }
+  //    expression { return env.RUN_CD == 'true' }
+    }
+
+
+  steps {
+    script {
+
+      // =========================
+      // Ejercicio 6.2: DEPLOY_ENV
+      // =========================
+    
+  env.DEPLOY_ENV = (env.BRANCH_NAME == 'master') ? 'PRO' : 'DEV'
+  echo "Deploying to ${env.DEPLOY_ENV}"
+
+    //  if (env.BRANCH_NAME == 'develop') {
+      //  env.DEPLOY_ENV = 'DEV'
+      //} else {
+       // env.DEPLOY_ENV = 'PRO'
+     echo "Usando imagen: ${env.IMAGE_NAME}" 
+      sh "echo Aplicación disponible en: ${APP_URL}"   
+      //echo "Entorno de despliegue: ${env.DEPLOY_ENV}"
+
+      // =========================
+      // Ejercicio 6: compose up -> logs -> down
+      // =========================
+      try {
+        sh 'docker compose up -d'
+        sh 'sleep 5'
+        sh 'docker compose logs app'   // cambia "app" por tu servicio principal
+      } finally {
+        sh 'docker compose down --volumes'
+      }
+    }
+  }
+
+  post {
+    always {
+      echo "Limpieza de recursos..." 
+      sh 'docker compose down --volumes || true'
+      sh "docker rmi ${env.IMAGE_NAME} || true" 
+    } 
+    success {
+      echo 'SUCCESS' 
+    } 
+    failure { 
+      echo 'FAILURE'
+      sh 'docker compose logs app || true' 
+    } 
+  }
+}
+ 
+    
     stage('Test') {
       /*
         `agent` dentro de un stage permite que SOLO ese stage se ejecute en un contexto concreto.
@@ -27,5 +175,11 @@ pipeline {
         sh 'echo "Stage dummy. En la Practica 2 ejecutaras aqui los tests unitarios."'
       }
     }
+       stage('Info') {
+            steps { 
+                echo "Job: ${env.JOB_NAME}"
+                echo "Build ${env.BUILD_NUMBER}"
+            }
+        }
   }
 }

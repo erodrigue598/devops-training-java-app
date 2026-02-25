@@ -1,0 +1,157 @@
+ # Práctica 3 - GitHub Actions (dummy)
+#
+# Punto de partida: workflow mínimo para validar que Actions funciona en el repo.
+# En la Práctica 3 irás ampliando este workflow para llegar a CI/CD.
+
+name: CI (dummy)
+
+on:
+ push:
+   branches:
+    - '**' # todas las ramas 
+ pull_request:
+    branches:
+      - develop
+      - master
+ workflow_dispatch:
+    inputs: 
+       RUN_CD:  
+          description: "Ejecutar CD" 
+          required: false 
+          type: boolean 
+          default: false
+          #
+       DEPLOY_ENV: 
+          description: "Entorno de despliegue"
+          type: choice 
+          required: false 
+          options: 
+            - DEV 
+            - PRO 
+          default: DEV
+# --------------------------- 
+# ENV A NIVEL DE WORKFLOW 
+# --------------------------- 
+env: 
+  IMAGE_NAME: my-app-image
+  APP_URL: https://miapp.com 
+
+jobs:
+  dummy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mostrar contexto
+        run: |
+          echo "Repo: $GITHUB_REPOSITORY"
+          echo "Ref:  $GITHUB_REF"
+          echo "Branch: $GITHUB_REF_NAME"
+  ci:
+    runs-on: ubuntu-latest 
+    environment: ${{ github.ref_name == 'master' && 'PRO' || 'DEV' }}
+
+  # --------------------------- 
+  # ENV A NIVEL DE JOB (sobrescribe) 
+  # --------------------------- 
+    env:
+      APP_URL: https://override-desde-job.com
+      
+    steps: 
+     - name: Checkout
+       uses: actions/checkout@v4 
+     - name: Info 
+       run: | 
+         echo "Branch: ${{ github.ref_name }}" 
+         echo "SHA: ${{ github.sha }}" 
+         echo "Runner OS: ${{ runner.os }}" 
+         echo "Runner name: ${{ runner.name }}"
+     - name: Mostrar variables env 
+       run: | 
+          echo "IMAGE_NAME desde workflow: $IMAGE_NAME" 
+          echo "APP_URL sobrescrita en job: $APP_URL" 
+          echo "IMAGE_NAME via syntax: ${{ env.IMAGE_NAME }}" 
+          echo "APP_URL via syntax: ${{ env.APP_URL }}"
+          
+    # --------------------------- 
+    # DOCKER COMO AGENTE DE CI 
+    # --------------------------- 
+ #    - name: Debug 
+ #      run: ls -R ${{ github.workspace }}
+
+#     - name: Mostrar directorio actual
+#       run: pwd
+#     - name: Listar contenido del directorio actual
+#       run: ls -la
+
+  #   - name: Build CI image 
+       #run:  docker build -t ci-image -f devops/ci.Dockerfile $GITHUB_WORKSPACE
+    #   working-directory: ${{ github.workspace }}
+     - name: Build CI image con tag usado por docker-compose 
+       run: | 
+          docker build \
+             -t $IMAGE_NAME:latest \
+             -f devops/ci.Dockerfile . 
+          echo "Imagen construida: $IMAGE_NAME:latest"
+          
+
+     - name: Lint 
+     #  run: docker run --rm ci-image make lint 
+       run: docker run --rm $IMAGE_NAME:latest make lint
+
+     - name: Test 
+    #   run: docker run --rm ci-image make test 
+    
+       run: docker run --rm $IMAGE_NAME:latest make test     
+
+
+     - name: Mostrar inputs de workflow_dispatch 
+       run: | 
+          echo "RUN_CD: ${{ inputs.RUN_CD }}" 
+          echo "DEPLOY_ENV: ${{ inputs.DEPLOY_ENV }}"    
+     - name: Usar variables y secretos del environment 
+       run: | 
+          echo "Registry host: ${{ vars.REGISTRY_HOST }}" 
+          echo "Artifactory URL: ${{ vars.ARTIFACTORY_URL }}" 
+          # Los secrets no se imprimen por seguridad 
+          echo "Usuario del registry: ${{ secrets.REGISTRY_USER }}" 
+          # 
+  cd:
+    runs-on: ubuntu-latest 
+    needs: ci
+
+    # se ejecuta si se ejecute si: inputs.RUN_CD == true (workflow dispatch),
+    #o github.ref_name es develop o master
+    if: ${{ inputs.RUN_CD == true || github.ref_name == 'develop' || github.ref_name == 'master' }}
+   
+    steps: 
+     - name: Checkout 
+       uses: actions/checkout@v4
+       
+     - name: Simular despliegue
+       run: |
+          echo "=== CD ACTIVADO ===" 
+          echo "Branch: ${{ github.ref_name }}" 
+          echo "RUN_CD: ${{ inputs.RUN_CD }}" 
+
+
+
+ 
+     - name: Docker Compose UP 
+       run: | 
+          echo "Levantando servicios con docker compose..." 
+          docker compose -f docker-compose.yml up -d     
+     - name: Logs del contenedor principal 
+       run: | 
+           echo "=== LOGS DEL SERVICIO APP ===" 
+           docker compose -f docker-compose.yml logs app
+
+     - name: Cleanup (siempre) 
+       if: always() 
+       run: | 
+          echo "=== CLEANUP ===" 
+          docker compose -f docker-compose.yml down -v 
+          echo "Servicios eliminados"
+         
+          echo "Desplegando en entorno: ${{ github.ref_name == 'master' && 'PRO' || 'DEV' }}" 
+          echo "Imagen a desplegar: $IMAGE_NAME:latest"
+
+          
