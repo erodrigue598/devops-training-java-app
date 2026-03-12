@@ -1,0 +1,236 @@
+# Práctica 5 - Azure DevOps Pipelines (dummy)
+#
+# Punto de partida: pipeline mínimo para validar que Azure DevOps lee el repo de GitHub
+  # y ejecuta un YAML sin errores.
+
+
+  trigger:   #none
+    branches:
+      include:
+        - main
+        - develop
+
+  pr:  #none
+    branches:
+      include:
+        - main
+        - develop
+
+  # 
+  # Ejercicio 2: Variable Groups
+  # 
+  variables:
+    - group: devops-training-python-saas
+  # 
+  # Ejercicio 3 - Variables globales
+  # 
+    - name: IMAGE_REPO
+      value: "my-python-app"
+    - name: COMPOSE_FILE
+      value: "docker-compose.yml"
+    - name: COMPOSE_SERVICE
+      value: "python-service"
+    # Tag de imagen basado en la versión del repo
+    - name: VERSION
+      value: "$(Build.SourceVersion)"
+    
+
+  # 
+  #  parámetros 
+  # 
+  parameters:
+    - name: RUN_CD
+      type: boolean
+      default: false
+
+    - name: ENABLE_REGISTRY_PUSH
+      type: boolean
+      default: false
+
+    - name: ENABLE_TESTS
+      type: boolean
+      default: true
+
+    - name: FORCE_CLEANUP
+      type: boolean
+      default: false
+
+
+  stages:
+  
+  # CI 
+  
+  - stage: CI
+    displayName: "Stage CI"
+    jobs:
+
+  # Job 1: Información básica del repositorio
+      - job: info
+        displayName: "Job de información"
+        pool:
+          vmImage: ubuntu-latest
+
+        steps:
+        - script: |
+              echo "Repo:   $(Build.Repository.Name)"
+              echo "Branch: $(Build.SourceBranchName)"
+              echo "SHA:    $(Build.SourceVersion)"
+          displayName:  "Mostrar información " # Info (dummy)
+    #
+    #Job 2: CI con contenedor de herramientas (Ejercicio 4)
+    # 
+      - job: ci_container
+        displayName: "CI con contenedor de herramientas"
+        pool:
+          vmImage: ubuntu-latest
+
+        steps:
+
+            # Construcción de la imagen CI
+          - task: Docker@2
+            displayName: "Construir imagen CI"
+            inputs:
+              command: build
+              Dockerfile: devops/ci.Dockerfile
+              tags: |
+                ci-tools:latest
+
+            # Ejecución de lint + test dentro del contenedor
+          - task: Docker@2
+            displayName: "Ejecutar lint y tests dentro del contenedor"
+            condition: eq('${{ parameters.ENABLE_TESTS }}', 'true')
+            inputs:
+              command: run
+              imageName: ci-tools:latest
+              containerCommand: |
+                echo "Ejecutando lint..."
+                make lint
+                echo "Ejecutando tests..."
+                make test
+
+    # 
+    # Job 3: Tests en contenedor Python(Ejercicio 5)
+    # 
+      - job: tests
+        displayName: "Tests en contenedor"
+        dependsOn: ci_container
+        pool:
+          vmImage: ubuntu-latest
+
+        container: python:3.6-slim
+        steps:
+          - checkout: self
+
+          - script: |
+                    pip install -r requirements.txt
+                    pytest -q
+            displayName: "Ejecutar tests Python"
+
+    # 
+    # Job 4: Build de imagen Docker + Push opcional (Ejercicio 5)
+    # 
+      - job: build_image
+        displayName: "Build image"
+        dependsOn: tests
+        pool:
+          vmImage: ubuntu-latest
+
+        steps:
+          - checkout: self
+
+            # Build de la imagen de aplicación
+          - script: |
+              echo "Construyendo imagen..."
+              docker build -t $(IMAGE_REPO):$(VERSION) -f devops/Dockerfile .
+            displayName: "Docker build"
+
+            # Login a Docker Hub 
+          - script: |
+                echo "Login en Docker Hub..."
+                echo "$(DOCKERHUB_PASSWORD)" | docker login -u "$(DOCKERHUB_USERNAME)" --password-stdin
+            displayName: "Docker Hub login"
+            condition: and(eq('${{ parameters.ENABLE_REGISTRY_PUSH }}', 'true'), eq(variables['REGISTRY_MODE'], 'saas'))
+
+            # Push a Docker Hub
+          - script: |
+                docker tag $(IMAGE_REPO):$(VERSION) $(DOCKERHUB_USERNAME)/$(IMAGE_REPO):$(VERSION)
+                docker push $(DOCKERHUB_USERNAME)/$(IMAGE_REPO):$(VERSION)
+            displayName: "Push a Docker Hub"
+            condition: and(eq('${{ parameters.ENABLE_REGISTRY_PUSH }}', 'true'), eq(variables['REGISTRY_MODE'], 'saas'))
+
+            # Push a local registry
+          - script: |
+                docker tag $(IMAGE_REPO):$(VERSION) localhost:5000/$(IMAGE_REPO):$(VERSION)
+                docker push localhost:5000/$(IMAGE_REPO):$(VERSION)
+            displayName: "Push a local registry"
+            condition: and(eq('${{ parameters.ENABLE_REGISTRY_PUSH }}', 'true'), eq(variables['REGISTRY_MODE'], 'local')) 
+
+
+  # 
+  # Stage CD 
+  # 
+  - stage: CD
+    displayName: "Stage CD"
+    dependsOn: CI
+
+    # Condición: RUN_CD == true OR branch develop/master
+    condition: or(
+      eq('${{ parameters.RUN_CD }}', 'true'),
+      eq(variables['Build.SourceBranchName'], 'develop'),
+      eq(variables['Build.SourceBranchName'], 'master')
+      )
+
+    variables:
+      #  Entorno dinámico según la rama
+      # DEPLOY_ENV: $[eq(variables['Build.SourceBranchName'], 'master') ? 'PRO' : 'DEV']
+      DEPLOY_ENV: ${{ eq(variables['Build.SourceBranchName'], 'master') && 'PRO' || 'DEV' }}
+
+  
+    jobs:
+
+      - job: deploy
+        displayName: "Despliegue CD"
+        pool:
+          vmImage: ubuntu-latest
+
+        steps:
+        - checkout: self
+
+        - script: |
+            echo "Iniciando despliegue..."
+            echo "Branch: $(Build.SourceBranchName)"
+            echo "RUN_CD: ${{ parameters.RUN_CD }}"
+            echo "DEPLOY_ENV: $(DEPLOY_ENV)"
+          displayName: "Mostrar información de despliegue"
+  
+          #  - script: |
+          #     echo "Desplegando en entorno $(DEPLOY_ENV)..."
+          #    echo "TODO: docker compose up -d"
+          #  displayName: "Despliegue (TODO)"
+    # 
+    # Ejercicio 7: docker compose up -d
+    # 
+        - script: |
+            echo "Levantando entorno con Docker Compose..."
+            docker compose -f $(COMPOSE_FILE) up -d
+          displayName: "Docker Compose UP"
+
+          
+    #  mostrar logs del servicio principal
+          
+        - script: |
+            echo "Mostrando logs del servicio principal: $(COMPOSE_SERVICE)"
+            docker compose -f $(COMPOSE_FILE) logs $(COMPOSE_SERVICE)
+          displayName: "Logs del servicio principal"
+
+    # cleanup SIEMPRE
+        - script: |
+            echo "Realizando cleanup..."
+            docker compose -f $(COMPOSE_FILE) down --volumes || true
+            echo "Eliminando imagen local: $(IMAGE_REPO):$(VERSION)"
+            docker rmi $(IMAGE_REPO):$(VERSION) || true
+          displayName: "Cleanup final"
+          condition: always()
+
+
+    
